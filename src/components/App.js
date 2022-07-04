@@ -1,26 +1,36 @@
-import React, {useRef, useState} from 'react';
-import {Typography} from "@mui/material";
+import React, {useEffect, useRef, useState} from 'react';
+import {Container, Typography, Box, Grid} from "@mui/material";
+import AddIcon from '@mui/icons-material/Add';
+import RemoveIcon from '@mui/icons-material/Remove';
+import IconButton from '@mui/material/IconButton';
+import PlayArrowOutlinedIcon from '@mui/icons-material/PlayArrowOutlined';
+import PauseOutlinedIcon from '@mui/icons-material/PauseOutlined';
 
 export default function App() {
-  const [duration, setDuration] = useState(5); // seconds
-  const [timer, setTimer] = useState(duration);
-  const RefID = useRef(null);
+  const [sessionDuration, setSessionDuration] = useState(1200); // seconds
+  const [breakDuration, setBreakDuration] = useState(300); // seconds
+  const [currentTimer, setCurrentTimer] = useState('session');
+  const [timer, setTimer] = useState(sessionDuration);
+  const timerID = useRef(null);
 
+  const startTimer = () => {
+    if(timerID.current)
+      return;
 
-  const startTimer = (time) => {
-    if(time) {
-      setTimer(time);
-    } else if(!timer) {
-      setTimer(duration);
+    if(!timer) {
+      setTimer(
+        currentTimer === 'session'
+          ? sessionDuration
+          : breakDuration
+      );
     }
 
-    if(RefID.current) clearInterval(RefID.current);
-
-    RefID.current = setInterval(() => {
+    timerID.current = setInterval(() => {
       setTimer((t) => {
         if(t === 1) {
-          clearInterval(RefID.current);
-          RefID.current = null;
+          clearInterval(timerID.current);
+          timerID.current = null;
+          onTimerCompleted();
           return 0;
         }
         return t - 1;
@@ -29,39 +39,123 @@ export default function App() {
     }, 1000);
   }
 
-  const stopTimer = () => {
-    clearInterval(RefID.current);
-    RefID.current = null;
+  const onTimerCompleted = () => {
+    const nextTimer = currentTimer === 'session'
+      ? 'break'
+      : 'session';
+    setCurrentTimer(nextTimer);
+    setTimer(nextTimer === 'session'
+      ? sessionDuration
+      : breakDuration
+    );
   }
 
-  const incrementTimer = () => {
-    startTimer(Math.floor(((timer + 60) / 60) % 60) * 60);
+  const stopTimer = () => {
+    clearInterval(timerID.current);
+    timerID.current = null;
+  }
+
+  const formatTime = (time) => {
+    const minutes = Math.floor(time / 60);
+    const seconds = Math.floor(time % 60);
+
+    return (minutes > 9 ? minutes : '0' + minutes) + ':'
+      + (seconds > 9 ? seconds : '0' + seconds)
+  }
+
+  const incrementDuration = (sessionToIncrement) => {
+    if(sessionToIncrement === 'session') {
+      setSessionDuration(sessionDuration + 60);
+      if(currentTimer === 'session') {
+        setTimer(timer + 60);
+      }
+    } else if(sessionToIncrement === 'break') {
+      setBreakDuration(breakDuration + 60);
+      if(currentTimer === 'break') {
+        setTimer(timer + 60);
+      }
+    }
+  }
+
+  const decrementDuration = (sessionToIncrement) => {
+    if(sessionToIncrement === 'session' && sessionDuration > 300) {
+      setSessionDuration(sessionDuration - 60);
+      if(currentTimer === 'session') {
+        setTimer(timer - 60);
+      }
+    } else if(sessionToIncrement === 'break' && breakDuration > 300) {
+      setBreakDuration(breakDuration - 60);
+      if(currentTimer === 'break') {
+        setTimer(timer - 60);
+      }
+    }
   }
 
   return(
-    <div className="container" style={{textAlign: 'center'}}>
-      <Typography variant="h1" component="div" gutterBottom>
-        POMODORO
-      </Typography>
+    <Container>
+      <Grid container style={{textAlign: 'center'}}>
+        <Grid item sm={6}>
+          <Typography variant="h3"> Break </Typography>
+          <IconButton onClick={() => decrementDuration('break')}>
+            <RemoveIcon fontSize='large'></RemoveIcon>
+          </IconButton>
+          <Typography
+            variant="h4"
+            style={{
+              display: 'inline-block',
+              verticalAlign: 'middle'
+            }}
+          >
+            {formatTime(breakDuration)}
+          </Typography>
+          <IconButton>
+            <AddIcon
+              onClick={() => incrementDuration('break')}
+              fontSize='large' />
+          </IconButton>
+        </Grid>
 
-      <hr/>
-      <div className="App">
-        <button onClick={() => startTimer()}> start </button>
-        <button onClick={stopTimer}> stop </button>
-        <button onClick={incrementTimer}> + </button>
+        <Grid item sm={6}>
+          <Typography variant="h3"> Session </Typography>
+          <IconButton onClick={() => decrementDuration('session')}>
+            <RemoveIcon fontSize='large'></RemoveIcon>
+          </IconButton>
+          <Typography
+            variant="h4"
+            style={{
+              display: 'inline-block',
+              verticalAlign: 'middle'
+            }}
+          >
+            {formatTime(sessionDuration)}
+          </Typography>
+          <IconButton>
+            <AddIcon onClick={() => incrementDuration('session')} fontSize='large'></AddIcon>
+          </IconButton>
+        </Grid>
 
-        <h1>{Math.floor(timer / 60)} : {Math.floor(timer % 60)}</h1>
+        <Grid item xs={12}>
+          <IconButton onClick={startTimer}>
+            <PlayArrowOutlinedIcon fontSize="large"></PlayArrowOutlinedIcon>
+          </IconButton>
+          <IconButton onClick={stopTimer}>
+            <PauseOutlinedIcon fontSize="large"></PauseOutlinedIcon>
+          </IconButton>
 
-      </div>
-    </div>
+          <Typography variant="h1" style={{fontSize: '25rem'}}>
+            {formatTime(timer)}
+          </Typography>
+        </Grid>
+      </Grid>
+    </Container>
   )
 };
 // /*
 // // function clearTimer() {
 // //     clearInterval(id)
 // // }
-// // function startTimer(duration, feedbackInt) {
-// //     var timer = duration, minutes, seconds;
+// // function startTimer(sessionDuration, feedbackInt) {
+// //     var timer = sessionDuration, minutes, seconds;
 // //     id = setInterval(function () {
 // //         minutes = parseInt(timer / 60, 10);
 // //         seconds = parseInt(timer % 60, 10);
